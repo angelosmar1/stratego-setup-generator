@@ -41,7 +41,7 @@ model.load_state_dict(loaded_model_info['model_state_dict'])
 model = model.to(device)
 
 sample_setups, _ = model.generate_setups(num_setups=6, seed=42)
-plot_setups(sample_setups)
+plot_setups(sample_setups, num_columns=2)
 ```
 
 ![Example Output](example.png)
