@@ -16,8 +16,10 @@ def train(model, train_dataloader, num_epochs, optimizer, criterion,
 
     if device is None:
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    print(f"Using device '{device}'")
+    elif isinstance(device, str):
+        device = torch.device(device)
 
+    print(f"Using device '{device}'")
     model = model.to(device)
 
     metrics_per_epoch = {"train_metrics": {eval_metric: [] for eval_metric, func in eval_metrics}}

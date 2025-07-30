@@ -10,17 +10,20 @@ from .stratego_utils import PIECE_TO_STR, NUM_SETUP_SQUARES, NUM_PIECE_TYPES
 from .plotting import create_plot_grid
 
 
-def plot_per_square_distributions(real_setups, generated_setups, num_columns=10, width=5, height=3.5):
+def plot_per_square_distributions(real_setups_df, generated_setups_df=None, num_columns=10, width=5, height=3.5):
 
     fig, ax = create_plot_grid(NUM_SETUP_SQUARES, num_columns, width, height)
 
     for square in range(NUM_SETUP_SQUARES):
         row, column = divmod(square, num_columns)
-        distr1 = (real_setups.iloc[:, square].value_counts(normalize=True)
-                  .sort_index().rename(index=PIECE_TO_STR))
-        distr2 = (generated_setups.iloc[:, square].value_counts(normalize=True)
-                  .sort_index().rename(index=PIECE_TO_STR))
-        df = pd.DataFrame({'real setups': distr1, 'generated setups': distr2})
+        distr_real = (real_setups_df.iloc[:, square].value_counts(normalize=True)
+                                    .sort_index().rename(index=PIECE_TO_STR))
+        distr_dict = {'real setups': distr_real}
+        if generated_setups_df is not None:
+            distr_generated = (generated_setups_df.iloc[:, square].value_counts(normalize=True)
+                                                .sort_index().rename(index=PIECE_TO_STR))
+            distr_dict['generated setups'] = distr_generated
+        df = pd.DataFrame(distr_dict)
         df.plot.bar(ax=ax[row][column], rot=0)
         ax[row][column].set_title(f"Square {square}")
         ax[row][column].set_xlabel('')
@@ -71,7 +74,7 @@ class LSTMClassifier(nn.Module):
         return out, hidden
 
 
-def log_loss_from_logits(y_true, y_pred):
+def binary_log_loss_from_logits(y_true, y_pred):
     return log_loss(y_true, 1 / (1 + np.exp(-y_pred)))
 
 

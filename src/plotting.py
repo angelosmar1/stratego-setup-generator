@@ -62,7 +62,7 @@ def plot_setups(setups, num_columns=3, tile_size=0.6, font_size=15,
 
 
 def plot_setup_generation(setup, distributions, width=4, height=2):
-    fig, axes = create_plot_grid(NUM_SETUP_SQUARES + 1, 2, width, height)
+    fig, axes = create_plot_grid(2*(NUM_SETUP_SQUARES + 1), 2, width, height)
     for square in range(NUM_SETUP_SQUARES):
         plot_setup(setup[:square], ax=axes[square][0])
         axes[square][1].set_title("Probability distribution for next piece")
