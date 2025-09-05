@@ -22,6 +22,7 @@ class LSTMGenerator(nn.Module):
         x = x.permute(0, 2, 1)   # for compatibility with nn.CrossEntropyLoss
         return x, hidden
 
+    @torch.no_grad()
     def generate_setups(self, num_setups=1, seed=None):
         device = next(self.parameters()).device
         self.eval()
@@ -34,16 +35,15 @@ class LSTMGenerator(nn.Module):
         rng = torch.Generator(device=device)
         if seed is not None:
             rng.manual_seed(seed)
-        with torch.no_grad():
-            for square in range(NUM_SETUP_SQUARES):
-                out, hidden = self(new_piece, hidden)   # (num_setups, num_outputs, 1)
-                out = out.squeeze(-1)    # (num_setups, num_outputs)
-                out.masked_fill_(counts==0, float("-inf"))
-                distribution = F.softmax(out, dim=-1)   # (num_setups, num_outputs)
-                distributions.append(distribution)
-                new_piece = torch.multinomial(distribution, 1, generator=rng)
-                counts[positions, new_piece.squeeze(-1)] -= 1
-                setups[:, square] = new_piece.squeeze(-1)
+        for square in range(NUM_SETUP_SQUARES):
+            out, hidden = self(new_piece, hidden)   # (num_setups, num_outputs, 1)
+            out = out.squeeze(-1)    # (num_setups, num_outputs)
+            out.masked_fill_(counts==0, float("-inf"))
+            distribution = F.softmax(out, dim=-1)   # (num_setups, num_outputs)
+            distributions.append(distribution)
+            new_piece = torch.multinomial(distribution, 1, generator=rng)
+            counts[positions, new_piece.squeeze(-1)] -= 1
+            setups[:, square] = new_piece.squeeze(-1)
         distributions = torch.stack(distributions).transpose(0, 1)
         return setups.cpu(), distributions.cpu()
 
@@ -71,6 +71,7 @@ class TransformerGenerator(nn.Module):
         x = x.permute(0, 2, 1)   # for compatibility with nn.CrossEntropyLoss
         return x
 
+    @torch.no_grad()
     def generate_setups(self, num_setups=1, seed=None, batch_size=1024):
 
         device = next(self.parameters()).device
@@ -81,27 +82,26 @@ class TransformerGenerator(nn.Module):
         if seed is not None:
             rng.manual_seed(seed)
 
-        with torch.no_grad():
-            for batch_start in range(0, num_setups, batch_size):
-                cur_batch_size = min(batch_size, num_setups - batch_start)
-                positions = torch.arange(cur_batch_size)
-                cur_setups = torch.zeros((cur_batch_size, NUM_SETUP_SQUARES + 1), dtype=torch.uint8)
-                cur_setups[:, 0] = torch.tensor([START]).repeat(cur_batch_size, 1).squeeze(-1)
-                cur_distributions = []
-                counts = torch.tensor(list(PIECE_COUNTS.values())).repeat(cur_batch_size, 1).to(device)
+        for batch_start in range(0, num_setups, batch_size):
+            cur_batch_size = min(batch_size, num_setups - batch_start)
+            positions = torch.arange(cur_batch_size)
+            cur_setups = torch.zeros((cur_batch_size, NUM_SETUP_SQUARES + 1), dtype=torch.uint8)
+            cur_setups[:, 0] = torch.tensor([START]).repeat(cur_batch_size, 1).squeeze(-1)
+            cur_distributions = []
+            counts = torch.tensor(list(PIECE_COUNTS.values())).repeat(cur_batch_size, 1).to(device)
 
-                for square in range(1, NUM_SETUP_SQUARES + 1):
-                    out = self(cur_setups[:, :square].long().to(device))    # (num_setups, num_outputs, seq_len)
-                    out = out[:, :, -1].squeeze(-1)      # (num_setups, num_outputs)
-                    out.masked_fill_(counts==0, float("-inf"))
-                    distribution = F.softmax(out, dim=-1)     # (num_setups, num_outputs)
-                    cur_distributions.append(distribution)
-                    new_piece = torch.multinomial(distribution, 1, generator=rng)
-                    counts[positions, new_piece.squeeze(-1)] -= 1
-                    cur_setups[:, square] = new_piece.squeeze(-1)
+            for square in range(1, NUM_SETUP_SQUARES + 1):
+                out = self(cur_setups[:, :square].long().to(device))    # (num_setups, num_outputs, seq_len)
+                out = out[:, :, -1].squeeze(-1)      # (num_setups, num_outputs)
+                out.masked_fill_(counts==0, float("-inf"))
+                distribution = F.softmax(out, dim=-1)     # (num_setups, num_outputs)
+                cur_distributions.append(distribution)
+                new_piece = torch.multinomial(distribution, 1, generator=rng)
+                counts[positions, new_piece.squeeze(-1)] -= 1
+                cur_setups[:, square] = new_piece.squeeze(-1)
 
-                setups.append(cur_setups[:, 1:].cpu())
-                distributions.append(torch.stack(cur_distributions).transpose(0, 1).cpu())
+            setups.append(cur_setups[:, 1:].cpu())
+            distributions.append(torch.stack(cur_distributions).transpose(0, 1).cpu())
 
         setups = torch.cat(setups, dim=0)
         distributions = torch.cat(distributions, dim=0)
