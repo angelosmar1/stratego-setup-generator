@@ -142,7 +142,8 @@ def log_loss_seq(y_true, y_pred):
 class SetupsDataset(Dataset):
 
     def __init__(self, setups):
-        self.setups = [torch.tensor([START] + list(setup), dtype=torch.long) for setup in setups]
+        start_token_column = np.full((len(setups), 1), START)
+        self.setups = torch.tensor(np.hstack([start_token_column, setups]), dtype=torch.long)
 
     def __getitem__(self, item):
         return self.setups[item]
