@@ -36,7 +36,7 @@ def plot_per_square_distributions(real_setups_df, generated_setups_df=None, num_
     plt.show()
     
 
-def compute_nearest_neighbors(from_setups, to_setups, batch_size=500):
+def compute_nearest_neighbors(from_setups, to_setups, batch_size=256):
 
     nearest_neighbors = np.zeros(shape=(len(from_setups),), dtype='int')
     max_overlaps = np.zeros(shape=(len(from_setups),), dtype='int')
@@ -44,7 +44,7 @@ def compute_nearest_neighbors(from_setups, to_setups, batch_size=500):
     for start in range(0, len(from_setups), batch_size):
         end = start + batch_size
         batch = from_setups[start:end]
-        num_overlaps = np.sum(batch[:, np.newaxis, :] == to_setups[np.newaxis, :, :], axis=2)
+        num_overlaps = np.sum(batch[:, np.newaxis, :] == to_setups[np.newaxis, :, :], axis=2, dtype=np.uint8)
         nearest_neighbors[start:end] = np.argmax(num_overlaps, axis=1)
         max_overlaps[start:end] = num_overlaps[np.arange(len(batch)), nearest_neighbors[start:end]]
 
