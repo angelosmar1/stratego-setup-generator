@@ -71,18 +71,18 @@ def train_single_epoch(model, dataloader, optimizer, criterion, device):
         optimizer.step()
 
 
+@torch.no_grad()
 def predict_and_gather_labels(model, dataloader, device):
     model.eval()
     predictions = []
     labels = []
-    with torch.no_grad():
-        for inputs, targets in dataloader:
-            inputs = inputs.to(device)
-            output = model(inputs)
-            if isinstance(output, tuple):
-                output = output[0]
-            predictions.append(output)
-            labels.append(targets)
+    for inputs, targets in dataloader:
+        inputs = inputs.to(device)
+        output = model(inputs)
+        if isinstance(output, tuple):
+            output = output[0]
+        predictions.append(output)
+        labels.append(targets)
     predictions = torch.cat(predictions).squeeze(-1).cpu().numpy()
     labels = torch.cat(labels).squeeze(-1).cpu().numpy()
     return predictions, labels
