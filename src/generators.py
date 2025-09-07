@@ -26,7 +26,7 @@ class LSTMGenerator(nn.Module):
     def generate_setups(self, num_setups=1, seed=None):
         device = next(self.parameters()).device
         self.eval()
-        setups = torch.zeros((num_setups, NUM_SETUP_SQUARES), dtype=torch.long).to(device)
+        setups = torch.zeros((num_setups, NUM_SETUP_SQUARES), dtype=torch.uint8)
         counts = torch.tensor(list(PIECE_COUNTS.values())).repeat(num_setups, 1).to(device)
         positions = torch.arange(num_setups)
         hidden = None
@@ -45,7 +45,7 @@ class LSTMGenerator(nn.Module):
             counts[positions, new_piece.squeeze(-1)] -= 1
             setups[:, square] = new_piece.squeeze(-1)
         distributions = torch.stack(distributions).transpose(0, 1)
-        return setups.cpu(), distributions.cpu()
+        return setups.cpu().numpy(), distributions.cpu().numpy()
 
 
 class TransformerGenerator(nn.Module):
@@ -72,7 +72,7 @@ class TransformerGenerator(nn.Module):
         return x
 
     @torch.no_grad()
-    def generate_setups(self, num_setups=1, seed=None, batch_size=1024):
+    def generate_setups(self, num_setups=1, seed=None, batch_size=256):
 
         device = next(self.parameters()).device
         self.eval()
@@ -103,8 +103,8 @@ class TransformerGenerator(nn.Module):
             setups.append(cur_setups[:, 1:].cpu())
             distributions.append(torch.stack(cur_distributions).transpose(0, 1).cpu())
 
-        setups = torch.cat(setups, dim=0)
-        distributions = torch.cat(distributions, dim=0)
+        setups = torch.cat(setups, dim=0).numpy()
+        distributions = torch.cat(distributions, dim=0).numpy()
         return setups, distributions
 
 
