@@ -1,6 +1,3 @@
-import csv
-
-
 SPY = 0
 SCOUT = 1
 MINER = 2
@@ -32,20 +29,3 @@ PIECE_TO_STR = {
     CAPTAIN: "6", MAJOR: "7", COLONEL: "8", GENERAL: "9", MARSHAL: "M",
     BOMB: "B", FLAG: "F"
 }
-
-
-def read_setups(path, unique=True):
-    setups = []
-    with open(path, "r") as file:
-        reader = csv.reader(file)
-        for i, row in enumerate(reader):
-            setups.append(tuple(int(piece) for piece in row))
-    if not unique:
-        return setups
-    unique_setups = []
-    seen = set()
-    for setup in setups:
-        if setup not in seen:
-          unique_setups.append(setup)
-          seen.add(setup)
-    return unique_setups

@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 import matplotlib.patches as patches
 import torch
 
-from .stratego_utils import PIECE_TO_STR, NUM_SETUP_ROWS, NUM_SETUP_COLUMNS, NUM_SETUP_SQUARES
+from .constants import PIECE_TO_STR, NUM_SETUP_ROWS, NUM_SETUP_COLUMNS, NUM_SETUP_SQUARES
 
 
 def plot_setup(setup, tile_size=0.6, font_size=15, piece_labels=PIECE_TO_STR, ax=None):

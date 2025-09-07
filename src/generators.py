@@ -2,7 +2,7 @@ import torch
 from torch import nn
 import torch.nn.functional as F
 
-from .stratego_utils import START, NUM_SETUP_SQUARES, PIECE_COUNTS, NUM_PIECE_TYPES
+from .constants import START, NUM_SETUP_SQUARES, PIECE_COUNTS, NUM_PIECE_TYPES
 
 
 class LSTMGenerator(nn.Module):

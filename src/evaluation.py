@@ -6,7 +6,7 @@ import torch
 from torch import nn
 from torch.utils.data import TensorDataset
 
-from .stratego_utils import PIECE_TO_STR, NUM_SETUP_SQUARES, NUM_PIECE_TYPES
+from .constants import PIECE_TO_STR, NUM_SETUP_SQUARES, NUM_PIECE_TYPES
 from .plotting import create_plot_grid
 
 

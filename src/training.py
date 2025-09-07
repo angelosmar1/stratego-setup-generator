@@ -7,7 +7,7 @@ from sklearn.metrics import log_loss
 import torch
 from torch.utils.data import Dataset
 
-from .stratego_utils import START
+from .constants import START
 
 
 def train(model, train_dataloader, num_epochs, optimizer, criterion,
