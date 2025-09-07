@@ -14,7 +14,7 @@ MARSHAL = 9
 BOMB = 10
 FLAG = 11
 
-START = 12
+START = 12   # token that indicates the start of a sequence
 
 NUM_PIECE_TYPES = 12
 NUM_SETUP_SQUARES = 40
