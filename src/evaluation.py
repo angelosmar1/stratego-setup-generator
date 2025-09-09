@@ -1,3 +1,4 @@
+import itertools
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -6,26 +7,27 @@ import torch
 from torch import nn
 from torch.utils.data import TensorDataset
 
-from .constants import PIECE_TO_STR, NUM_SETUP_SQUARES, NUM_PIECE_TYPES
+from .constants import PIECE_TO_STR, NUM_SETUP_SQUARES, NUM_PIECE_TYPES, PIECE_COUNTS
 from .plotting import create_plot_grid
 
 
-def plot_per_square_distributions(real_setups_df, generated_setups_df=None, num_columns=10, width=5, height=3.5):
+def plot_per_square_distr_comparison(real_setups_df, generated_setups_df,
+                                     kl_div=None, num_columns=10, width=5, height=3.5):
 
     fig, ax = create_plot_grid(NUM_SETUP_SQUARES, num_columns, width, height)
 
     for square in range(NUM_SETUP_SQUARES):
         row, column = divmod(square, num_columns)
         distr_real = (real_setups_df.iloc[:, square].value_counts(normalize=True)
-                                    .sort_index().rename(index=PIECE_TO_STR))
-        distr_dict = {'real setups': distr_real}
-        if generated_setups_df is not None:
-            distr_generated = (generated_setups_df.iloc[:, square].value_counts(normalize=True)
-                                                .sort_index().rename(index=PIECE_TO_STR))
-            distr_dict['generated setups'] = distr_generated
-        df = pd.DataFrame(distr_dict)
+                      .sort_index().rename(index=PIECE_TO_STR))
+        distr_generated = (generated_setups_df.iloc[:, square].value_counts(normalize=True)
+                           .sort_index().rename(index=PIECE_TO_STR))
+        df = pd.DataFrame({'real setups': distr_real, 'generated setups': distr_generated})
         df.plot.bar(ax=ax[row][column], rot=0)
-        ax[row][column].set_title(f"Square {square}")
+        if kl_div is not None:
+            ax[row][column].set_title(f"Square {square} (KL={round(kl_div.loc[square], 4)})")
+        else:
+            ax[row][column].set_title(f"Square {square}")
         ax[row][column].set_xlabel('')
 
     for i in range(NUM_SETUP_SQUARES, len(fig.axes)):
@@ -34,10 +36,64 @@ def plot_per_square_distributions(real_setups_df, generated_setups_df=None, num_
 
     plt.tight_layout()
     plt.show()
-    
+
+
+def kl_divergence(p, q, smoothing=1e-12):
+    p = p + smoothing
+    q = q + smoothing
+    p /= p.sum()
+    q /= q.sum()
+    return (p * np.log(p / q)).sum()
+
+
+def compute_kl_div_single_squares(real_setups_df, generated_setups_df):
+
+    kl_divergences = []
+
+    for square in range(NUM_SETUP_SQUARES):
+        p = (real_setups_df.iloc[:, square].value_counts(normalize=True)
+             .sort_index().rename(index=PIECE_TO_STR)).to_numpy()
+
+        q = (generated_setups_df.iloc[:, square].value_counts(normalize=True)
+             .sort_index().rename(index=PIECE_TO_STR)).to_numpy()
+
+        kl_divergences.append(kl_divergence(p, q))
+
+    index = pd.Index(range(NUM_SETUP_SQUARES), name="sq")
+    return pd.Series(kl_divergences, name="kl_div", index=index)
+
+
+def compute_kl_div_square_pairs(real_setups_df, generated_setups_df):
+
+    valid_piece_pairs = ([(PIECE_TO_STR[piece1], PIECE_TO_STR[piece2])
+                          for piece1 in range(NUM_PIECE_TYPES)
+                          for piece2 in range(NUM_PIECE_TYPES)
+                          if piece1 != piece2 or PIECE_COUNTS[piece1] >= 2])
+
+    square_pairs = list(itertools.combinations(range(NUM_SETUP_SQUARES), 2))
+
+    kl_divergences = []
+
+    for sq1, sq2 in square_pairs:
+        p = (real_setups_df.iloc[:, [sq1, sq2]]
+             .replace(PIECE_TO_STR)
+             .value_counts(normalize=True)
+             .reindex(valid_piece_pairs, fill_value=0)
+             ).to_numpy()
+
+        q = (generated_setups_df.iloc[:, [sq1, sq2]]
+             .replace(PIECE_TO_STR)
+             .value_counts(normalize=True)
+             .reindex(valid_piece_pairs, fill_value=0)
+             ).to_numpy()
+
+        kl_divergences.append(kl_divergence(p, q))
+
+    index = pd.MultiIndex.from_tuples(square_pairs, names=("sq1", "sq2"))
+    return pd.Series(kl_divergences, name="kl_div", index=index)
+
 
 def compute_nearest_neighbors(from_setups, to_setups, batch_size=256):
-
     nearest_neighbors = np.zeros(shape=(len(from_setups),), dtype='int')
     max_overlaps = np.zeros(shape=(len(from_setups),), dtype='int')
 
@@ -67,7 +123,7 @@ class LSTMClassifier(nn.Module):
         x = self.embedding(x)  # (batch_size, seq_len, embedding_dim)
         out, hidden = self.lstm(x, hidden)
         if self.lstm.bidirectional:
-            out = torch.cat([out[:, -1, :out.shape[-1]//2], out[:, 0, out.shape[-1]//2:]], dim=-1)
+            out = torch.cat([out[:, -1, :out.shape[-1] // 2], out[:, 0, out.shape[-1] // 2:]], dim=-1)
         else:
             out = out[:, -1, :]
         out = self.fc_out(out)
