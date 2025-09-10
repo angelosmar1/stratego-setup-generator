@@ -35,6 +35,8 @@ class LSTMGenerator(nn.Module):
         rng = torch.Generator(device=device)
         if seed is not None:
             rng.manual_seed(seed)
+        else:
+            rng.seed()
         for square in range(NUM_SETUP_SQUARES):
             out, hidden = self(new_piece, hidden)   # (num_setups, num_outputs, 1)
             out = out.squeeze(-1)    # (num_setups, num_outputs)
@@ -81,6 +83,8 @@ class TransformerGenerator(nn.Module):
         rng = torch.Generator(device=device)
         if seed is not None:
             rng.manual_seed(seed)
+        else:
+            rng.seed()
 
         for batch_start in range(0, num_setups, batch_size):
             cur_batch_size = min(batch_size, num_setups - batch_start)
