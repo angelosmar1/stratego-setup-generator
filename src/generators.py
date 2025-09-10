@@ -15,7 +15,7 @@ class LSTMGenerator(nn.Module):
         self.fc = nn.Linear(hidden_size, NUM_PIECE_TYPES)
 
     def forward(self, x, hidden=None):
-        # x shape should be (batch_size, seq_len)
+        # x shape should be (batch_size, seq_len) and dtype should be long
         x = self.embedding(x)   # (batch_size, seq_len, embedding_dim)
         x, hidden = self.lstm(x, hidden)   # (batch_size, seq_len, hidden_size)
         x = self.fc(x)   # (batch_size, seq_len, num_outputs)
