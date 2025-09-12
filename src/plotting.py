@@ -7,6 +7,7 @@ from .constants import PIECE_TO_STR, NUM_SETUP_ROWS, NUM_SETUP_COLUMNS, NUM_SETU
 
 
 def plot_setup(setup, tile_size=0.6, font_size=15, piece_labels=PIECE_TO_STR, ax=None):
+
     lakes = [(-1, 2), (-1, 3), (-1, 6), (-1, 7)]
 
     if ax is None:
@@ -21,10 +22,9 @@ def plot_setup(setup, tile_size=0.6, font_size=15, piece_labels=PIECE_TO_STR, ax
                                  linewidth=1, edgecolor='none', facecolor='lightblue', alpha=0.5)
         ax.add_patch(rect)
 
-    if isinstance(setup, torch.Tensor) and setup.dim() > 1:
-        setup = setup.squeeze(0)
+    setup = np.squeeze(setup)
 
-    for square in range(len(setup)):
+    for square in range(min(len(setup), NUM_SETUP_SQUARES)):
         row, column = divmod(square, NUM_SETUP_COLUMNS)
         piece = setup[square]
         if isinstance(setup, torch.Tensor):
@@ -46,10 +46,11 @@ def create_plot_grid(num_plots, num_columns, subplot_width, subplot_height):
 
 
 def plot_setups(setups, num_columns=3, tile_size=0.6, font_size=15,
-                piece_labels=PIECE_TO_STR, wspace=0.1, hspace=0.1):
+                piece_labels=PIECE_TO_STR, w_space=0.1, h_space=0.1):
+
     fig, axes = create_plot_grid(len(setups), num_columns,
                                NUM_SETUP_COLUMNS * tile_size, NUM_SETUP_ROWS * tile_size)
-    fig.subplots_adjust(wspace=wspace, hspace=hspace)
+    fig.subplots_adjust(wspace=w_space, hspace=h_space)
 
     for i in range(len(setups)):
         row, column = divmod(i, num_columns)
@@ -59,6 +60,8 @@ def plot_setups(setups, num_columns=3, tile_size=0.6, font_size=15,
     for i in range(len(setups), len(fig.axes)):
         row, column = divmod(i, num_columns)
         axes[row][column].axis('off')
+
+    plt.show()
 
 
 def plot_setup_generation(setup, distributions, width=4, height=2):
