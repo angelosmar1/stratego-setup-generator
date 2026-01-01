@@ -22,6 +22,7 @@ def train(model, train_dataloader, num_epochs, optimizer, criterion,
     print(f"Using device '{device}'")
     model = model.to(device)
 
+    eval_metrics = eval_metrics or []
     metrics_per_epoch = {"train_metrics": {eval_metric: [] for eval_metric, func in eval_metrics}}
     if val_dataloader is not None:
         metrics_per_epoch["val_metrics"] = {eval_metric: [] for eval_metric, func in eval_metrics}
