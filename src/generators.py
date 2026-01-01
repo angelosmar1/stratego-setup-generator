@@ -41,10 +41,10 @@ class SetupGenerator(nn.Module):
                 distributions_batch.append(distribution)
 
             setups.append(setups_batch[:, 1:].to(device="cpu", dtype=torch.uint8))
-            distributions.append(torch.stack(distributions_batch).transpose(0, 1).cpu())
+            distributions.append(torch.stack(distributions_batch, dim=1).cpu())
 
-        setups = torch.cat(setups, dim=0).numpy()
-        distributions = torch.cat(distributions, dim=0).numpy()
+        setups = torch.cat(setups).numpy()
+        distributions = torch.cat(distributions).numpy()
 
         return setups, distributions
 
