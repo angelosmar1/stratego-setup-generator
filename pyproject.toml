@@ -1,0 +1,25 @@
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "stratego-setup-generator"
+version = "0.1.0"
+dependencies = [
+    "numpy>=2.0.2",
+    "matplotlib>=3.10.0",
+    "torch>=2.6.0",
+    "scikit-learn>=1.6.1",
+    "pandas>=2.2.2"
+]
+requires-python = ">=3.11"
+license = "MIT"
+license-files = ["LICEN[CS]E*"]
+description = "Using deep learning to generate human-like piece setups for the board game Stratego."
+
+[project.urls]
+Homepage = "https://github.com/angelosmar1/stratego-setup-generator"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+packages = ["stratego_setup_generator"]

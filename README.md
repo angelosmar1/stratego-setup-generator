@@ -25,12 +25,28 @@ In this repository we use deep learning to generate human-like Stratego setups. 
 | B      | Bomb        | 6x    |
 | F      | Flag        | 1x    |
 
+##  Installation
+
+```bash
+git clone https://github.com/angelosmar1/stratego-setup-generator
+cd stratego-setup-generator
+pip install -e .
+```
+For GPU support (optional but recommended) install a CUDA-enabled version of PyTorch before installing the project.
+
+## Project Structure
+
+- `src/` - Source code  
+- `data/` - Training data  
+- `models/` - Trained model checkpoints  
+- `notebooks/` - Notebooks for model training and evaluation
+
 ## Example
 
 ```python
 import torch
-from src.generators import LSTMGenerator
-from src.plotting import plot_setups
+from stratego_setup_generator.generators import LSTMGenerator
+from stratego_setup_generator.plotting import plot_setups
 
 MODEL_PATH = "models/lstm_generator.pth"
 
