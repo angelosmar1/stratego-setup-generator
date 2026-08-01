@@ -10,9 +10,18 @@ from torch.utils.data import Dataset
 from .constants import START
 
 
-def train(model, train_dataloader, num_epochs, optimizer, criterion,
-          val_dataloader=None, eval_metrics=None, num_print_decimals=5, 
-          device=None, callbacks=None):
+def train(
+    model,
+    train_dataloader,
+    num_epochs,
+    optimizer,
+    criterion,
+    val_dataloader=None,
+    eval_metrics=None,
+    num_print_decimals=5,
+    device=None,
+    callbacks=None
+    ):
 
     if device is None:
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -23,31 +32,43 @@ def train(model, train_dataloader, num_epochs, optimizer, criterion,
     model = model.to(device)
 
     eval_metrics = eval_metrics or []
-    metrics_per_epoch = {"train_metrics": {eval_metric: [] for eval_metric, func in eval_metrics}}
+    metrics_per_epoch = {
+        "train_metrics": {eval_metric: [] for eval_metric, func in eval_metrics}
+    }
     if val_dataloader is not None:
-        metrics_per_epoch["val_metrics"] = {eval_metric: [] for eval_metric, func in eval_metrics}
+        metrics_per_epoch["val_metrics"] = {
+            eval_metric: [] for eval_metric, func in eval_metrics
+        }
 
     for epoch in range(1, num_epochs + 1):
 
-        train_single_epoch(model, train_dataloader, optimizer, criterion, device)
+        train_single_epoch(
+            model, train_dataloader, optimizer, criterion, device
+        )
 
         message = f"Epoch: {epoch}"
 
-        train_preds, y_train = predict_and_gather_labels(model, train_dataloader, device)
-
+        train_preds, y_train = (
+            predict_and_gather_labels(model, train_dataloader, device)
+        )
         for eval_metric, func in eval_metrics:
             score = func(y_train, train_preds)
             metrics_per_epoch["train_metrics"][eval_metric].append(score)
-            message += f", Train {eval_metric}: {round(score, num_print_decimals)}"
+            message += (
+                f", Train {eval_metric}: {round(score, num_print_decimals)}"
+            )
 
         if val_dataloader is not None:
 
-            val_preds, y_val = predict_and_gather_labels(model, val_dataloader, device)
-
+            val_preds, y_val = (
+                predict_and_gather_labels(model, val_dataloader, device)
+            )
             for eval_metric, func in eval_metrics:
                 score = func(y_val, val_preds)
                 metrics_per_epoch["val_metrics"][eval_metric].append(score)
-                message += f", Val {eval_metric}: {round(score, num_print_decimals)}"
+                message += (
+                    f", Val {eval_metric}: {round(score, num_print_decimals)}"
+                )
 
         print(message)
 
@@ -101,17 +122,33 @@ def save_model(save_path, model, **to_save):
     torch.save(model_info, save_path)
 
 
-def plot_metric_curves(train_metric_per_epoch, val_metric_per_epoch, best_epoch=None,
-                       fig_size=(6, 4), title=None, metric_label=None, ax=None):
+def plot_metric_curves(
+        train_metric_per_epoch,
+        val_metric_per_epoch,
+        best_epoch=None,
+        fig_size=(6, 4),
+        title=None,
+        metric_label=None,
+        ax=None
+    ):
+
     if ax is None:
         fig, ax = plt.subplots(figsize=fig_size)
 
     x_axis_values = list(range(1, len(train_metric_per_epoch) + 1))
-
-    ax.plot(x_axis_values, train_metric_per_epoch, color="blue", label=f"Train Metric")
-    ax.plot(x_axis_values, val_metric_per_epoch, color="red", label=f"Validation Metric")
+    ax.plot(
+        x_axis_values, train_metric_per_epoch,
+        color="blue", label=f"Train Metric"
+    )
+    ax.plot(
+        x_axis_values, val_metric_per_epoch,
+        color="red", label=f"Validation Metric"
+    )
     if best_epoch is not None:
-        ax.axvline(x=best_epoch, linestyle="--", color="green", label="Best Epoch")
+        ax.axvline(
+            x=best_epoch, linestyle="--",
+            color="green", label="Best Epoch"
+        )
     ax.legend()
     ax.set_title(title)
     ax.set_ylabel(metric_label if metric_label is not None else "Metric")
@@ -144,7 +181,9 @@ class SetupsDataset(Dataset):
 
     def __init__(self, setups):
         start_token_column = np.full((len(setups), 1), START)
-        self.setups = torch.tensor(np.hstack([start_token_column, setups]), dtype=torch.long)
+        self.setups = torch.tensor(
+            np.hstack([start_token_column, setups]), dtype=torch.long
+        )
 
     def __getitem__(self, item):
         return self.setups[item]
@@ -155,8 +194,13 @@ class SetupsDataset(Dataset):
 
 class SetupsDatasetWrapper(Dataset):
 
-    mirror_indices = ([0] + list(range(10, 0, -1)) + list(range(20, 10, -1))
-                          + list(range(30, 20, -1)) + list(range(40, 30, -1)))
+    mirror_indices = [
+        0,
+        *range(10, 0, -1),
+        *range(20, 10, -1),
+        *range(30, 20, -1),
+        *range(40, 30, -1),
+    ]
             
     def __init__(self, dataset, mirror_prob=0.0, random_state=None):
         self.dataset = dataset
