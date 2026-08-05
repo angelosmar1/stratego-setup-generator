@@ -1,7 +1,6 @@
 import random
 
 import numpy as np
-import matplotlib.pyplot as plt
 from sklearn.metrics import log_loss
 
 import torch
@@ -16,11 +15,13 @@ def train(
     num_epochs,
     optimizer,
     criterion,
-    val_dataloader=None,
-    eval_metrics=None,
+    val_dataloaders=None,
+    val_metrics=None,
     num_print_decimals=5,
+    max_grad_norm=None,
     device=None,
-    callbacks=None
+    callbacks=None,
+    verbose=True
     ):
 
     if device is None:
@@ -28,131 +29,114 @@ def train(
     elif isinstance(device, str):
         device = torch.device(device)
 
-    print(f"Using device '{device}'")
+    if verbose:
+        print(f"Using device '{device}'")
+
     model = model.to(device)
 
-    eval_metrics = eval_metrics or []
-    metrics_per_epoch = {
-        "train_metrics": {eval_metric: [] for eval_metric, func in eval_metrics}
-    }
-    if val_dataloader is not None:
-        metrics_per_epoch["val_metrics"] = {
-            eval_metric: [] for eval_metric, func in eval_metrics
+    val_dataloaders = val_dataloaders or []
+    val_metrics = val_metrics or []
+    callbacks = callbacks or []
+    max_grad_norm = max_grad_norm or float('inf')
+
+    metrics_per_epoch = {}
+    for val_set_name, val_dataloader in val_dataloaders:
+        metrics_per_epoch[val_set_name] = {
+            val_metric: [] for val_metric, func in val_metrics
         }
 
     for epoch in range(1, num_epochs + 1):
 
         train_single_epoch(
-            model, train_dataloader, optimizer, criterion, device
+            model, train_dataloader, optimizer,
+            criterion, max_grad_norm, device
         )
 
-        message = f"Epoch: {epoch}"
+        message_parts = []
 
-        train_preds, y_train = (
-            predict_and_gather_labels(model, train_dataloader, device)
-        )
-        for eval_metric, func in eval_metrics:
-            score = func(y_train, train_preds)
-            metrics_per_epoch["train_metrics"][eval_metric].append(score)
-            message += (
-                f", Train {eval_metric}: {round(score, num_print_decimals)}"
-            )
-
-        if val_dataloader is not None:
+        for val_set_name, val_dataloader in val_dataloaders:
 
             val_preds, y_val = (
                 predict_and_gather_labels(model, val_dataloader, device)
             )
-            for eval_metric, func in eval_metrics:
+            for val_metric, func in val_metrics:
                 score = func(y_val, val_preds)
-                metrics_per_epoch["val_metrics"][eval_metric].append(score)
-                message += (
-                    f", Val {eval_metric}: {round(score, num_print_decimals)}"
-                )
+                metrics_per_epoch[val_set_name][val_metric].append(float(score))
 
-        print(message)
+            formatted_metrics = ", ".join(
+                f"{metric_name}={values[-1]:.{num_print_decimals}f}"
+                for metric_name, values in metrics_per_epoch[val_set_name].items()
+            )
+            message_parts.append(f"{val_set_name}: {formatted_metrics}")
 
-        if callbacks is None:
-            continue
+        message = f"[Epoch {epoch}] {' | '.join(message_parts)}"
+        if verbose:
+            print(message)
+
         if any(callback(metrics_per_epoch) for callback in callbacks):
             break
 
     return metrics_per_epoch
 
 
-def train_single_epoch(model, dataloader, optimizer, criterion, device):
+def train_single_epoch(
+        model, dataloader, optimizer, criterion, max_grad_norm, device):
+
     model.train()
+
     for inputs, targets in dataloader:
+
         inputs, targets = inputs.to(device), targets.to(device)
+
         optimizer.zero_grad()
+
         output = model(inputs)
         if isinstance(output, tuple):
             output = output[0]
+
         loss = criterion(output, targets)
         loss.backward()
+
+        torch.nn.utils.clip_grad_norm_(model.parameters(), max_grad_norm)
+
         optimizer.step()
 
 
 @torch.no_grad()
 def predict_and_gather_labels(model, dataloader, device):
+
     model.eval()
+
     predictions = []
     labels = []
+
     for inputs, targets in dataloader:
+
         inputs = inputs.to(device)
+
         output = model(inputs)
         if isinstance(output, tuple):
             output = output[0]
+
         predictions.append(output)
         labels.append(targets)
+
     predictions = torch.cat(predictions).squeeze(-1).cpu().numpy()
     labels = torch.cat(labels).squeeze(-1).cpu().numpy()
+
     return predictions, labels
 
 
 def save_model(save_path, model, **to_save):
     if not save_path.endswith(".pth"):
         save_path += ".pth"
-    model_info = {'model_state_dict': model.state_dict()}
+    checkpoint = {'model_state_dict': model.state_dict()}
     for key, value in to_save.items():
         if hasattr(value, 'state_dict'):
-            model_info[f"{key}_state_dict"] = value.state_dict()
+            checkpoint[f"{key}_state_dict"] = value.state_dict()
         else:
-            model_info[key] = value
-    torch.save(model_info, save_path)
-
-
-def plot_metric_curves(
-        train_metric_per_epoch,
-        val_metric_per_epoch,
-        best_epoch=None,
-        fig_size=(6, 4),
-        title=None,
-        metric_label=None,
-        ax=None
-    ):
-
-    if ax is None:
-        fig, ax = plt.subplots(figsize=fig_size)
-
-    x_axis_values = list(range(1, len(train_metric_per_epoch) + 1))
-    ax.plot(
-        x_axis_values, train_metric_per_epoch,
-        color="blue", label=f"Train Metric"
-    )
-    ax.plot(
-        x_axis_values, val_metric_per_epoch,
-        color="red", label=f"Validation Metric"
-    )
-    if best_epoch is not None:
-        ax.axvline(
-            x=best_epoch, linestyle="--",
-            color="green", label="Best Epoch"
-        )
-    ax.legend()
-    ax.set_title(title)
-    ax.set_ylabel(metric_label if metric_label is not None else "Metric")
-    ax.set_xlabel("Epochs")
+            checkpoint[key] = value
+    torch.save(checkpoint, save_path)
 
 
 class LearningRateCallback:

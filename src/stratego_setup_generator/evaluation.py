@@ -118,28 +118,32 @@ def compute_kl_div_square_pairs(real_setups_df, generated_setups_df):
 def find_most_overlapping(from_setups, to_setups, batch_size=256):
 
     most_overlapping = np.empty(len(from_setups), dtype='int')
-    num_overlaps = np.empty(len(from_setups), dtype='int')
+    max_num_overlaps = np.empty(len(from_setups), dtype='int')
 
     for start in range(0, len(from_setups), batch_size):
         end = start + batch_size
         batch = from_setups[start:end]
-        num_overlaps = np.sum(
+
+        num_overlaps_for_batch = np.sum(
             batch[:, None, :] == to_setups[None, :, :],
             axis=2,
             dtype=np.uint8,
         )
-        most_overlapping[start:end] = np.argmax(num_overlaps, axis=1)
-        num_overlaps[start:end] = (
-            num_overlaps[np.arange(len(batch)), most_overlapping[start:end]]
+        most_overlapping_for_batch = np.argmax(num_overlaps_for_batch, axis=1)
+
+        most_overlapping[start:end] = most_overlapping_for_batch
+        max_num_overlaps[start:end] = (
+            num_overlaps_for_batch[np.arange(len(batch)), most_overlapping_for_batch]
         )
 
-    return most_overlapping, num_overlaps
+    return most_overlapping, max_num_overlaps
 
 
 class LSTMClassifier(nn.Module):
 
     def __init__(
-        self, hidden_size, embedding_dim, num_layers=1, bidirectional=True):
+        self, hidden_size, embedding_dim, num_layers=1,
+        bidirectional=True, dropout=0.0):
 
         super().__init__()
         self.embedding = nn.Embedding(NUM_PIECE_TYPES, embedding_dim)
@@ -148,7 +152,8 @@ class LSTMClassifier(nn.Module):
             hidden_size=hidden_size,
             num_layers=num_layers,
             batch_first=True,
-            bidirectional=bidirectional
+            bidirectional=bidirectional,
+            dropout=dropout
         )
         fc_out_input_size = 2 * hidden_size if bidirectional else hidden_size
         self.fc_out = nn.Linear(fc_out_input_size, 1)

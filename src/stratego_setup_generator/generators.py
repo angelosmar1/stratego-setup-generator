@@ -27,7 +27,7 @@ class SetupGenerator(nn.Module):
         for batch_start in range(0, num_setups, batch_size):
 
             cur_batch_size = min(batch_size, num_setups - batch_start)
-            positions = torch.arange(cur_batch_size)
+            positions = torch.arange(cur_batch_size, device=device)
 
             setups_batch = torch.empty(
                 (cur_batch_size, NUM_SETUP_SQUARES + 1), dtype=torch.long
@@ -71,13 +71,14 @@ class SetupGenerator(nn.Module):
 
 class LSTMGenerator(SetupGenerator):
 
-    def __init__(self, hidden_size, embedding_dim, num_layers=1):
+    def __init__(self, hidden_size, embedding_dim, num_layers=1, dropout=0.0):
         super().__init__()
         self.embedding = nn.Embedding(NUM_PIECE_TYPES + 1, embedding_dim)
         self.lstm = nn.LSTM(
             input_size=embedding_dim,
             hidden_size=hidden_size,
             num_layers=num_layers,
+            dropout=dropout,
             batch_first=True
         )
         self.fc_out = nn.Linear(hidden_size, NUM_PIECE_TYPES)
