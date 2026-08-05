@@ -115,10 +115,10 @@ def compute_kl_div_square_pairs(real_setups_df, generated_setups_df):
     return pd.Series(kl_divergences, name="kl_div", index=index)
 
 
-def compute_nearest_neighbors(from_setups, to_setups, batch_size=256):
+def find_most_overlapping(from_setups, to_setups, batch_size=256):
 
-    nearest_neighbors = np.empty(len(from_setups), dtype='int')
-    max_overlaps = np.empty(len(from_setups), dtype='int')
+    most_overlapping = np.empty(len(from_setups), dtype='int')
+    num_overlaps = np.empty(len(from_setups), dtype='int')
 
     for start in range(0, len(from_setups), batch_size):
         end = start + batch_size
@@ -128,12 +128,12 @@ def compute_nearest_neighbors(from_setups, to_setups, batch_size=256):
             axis=2,
             dtype=np.uint8,
         )
-        nearest_neighbors[start:end] = np.argmax(num_overlaps, axis=1)
-        max_overlaps[start:end] = (
-            num_overlaps[np.arange(len(batch)), nearest_neighbors[start:end]]
+        most_overlapping[start:end] = np.argmax(num_overlaps, axis=1)
+        num_overlaps[start:end] = (
+            num_overlaps[np.arange(len(batch)), most_overlapping[start:end]]
         )
 
-    return nearest_neighbors, max_overlaps
+    return most_overlapping, num_overlaps
 
 
 class LSTMClassifier(nn.Module):

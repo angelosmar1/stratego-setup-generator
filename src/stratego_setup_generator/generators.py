@@ -36,7 +36,7 @@ class SetupGenerator(nn.Module):
 
             distributions_batch = []
 
-            counts = torch.tensor(
+            remaining_counts = torch.tensor(
                 list(PIECE_COUNTS.values()), device=device
             ).repeat(cur_batch_size, 1)
 
@@ -47,14 +47,14 @@ class SetupGenerator(nn.Module):
                 logits, model_state = self._get_logits_next(
                     setups_batch[:, :square].to(device), model_state
                 )
-                logits.masked_fill_(counts==0, float("-inf"))
+                logits.masked_fill_(remaining_counts==0, float("-inf"))
                 distribution = F.softmax(logits, dim=-1)
 
                 new_piece = torch.multinomial(
                     distribution, num_samples=1, generator=rng
                 ).squeeze(-1)
 
-                counts[positions, new_piece] -= 1
+                remaining_counts[positions, new_piece] -= 1
                 setups_batch[:, square] = new_piece
                 distributions_batch.append(distribution)
 
@@ -80,13 +80,13 @@ class LSTMGenerator(SetupGenerator):
             num_layers=num_layers,
             batch_first=True
         )
-        self.fc = nn.Linear(hidden_size, NUM_PIECE_TYPES)
+        self.fc_out = nn.Linear(hidden_size, NUM_PIECE_TYPES)
 
     def forward(self, x, hidden_state=None):
         # x shape should be (batch_size, seq_len) and dtype should be long
         x = self.embedding(x)  # (batch_size, seq_len, embedding_dim)
         x, hidden_state = self.lstm(x, hidden_state)  # (batch_size, seq_len, hidden_size)
-        x = self.fc(x)  # (batch_size, seq_len, NUM_PIECE_TYPES)
+        x = self.fc_out(x)  # (batch_size, seq_len, NUM_PIECE_TYPES)
         x = x.permute(0, 2, 1)  # for compatibility with nn.CrossEntropyLoss
         return x, hidden_state
 
@@ -135,12 +135,7 @@ class TransformerGenerator(SetupGenerator):
 class TransformerBlock(nn.Module):
 
     def __init__(
-        self,
-        embedding_dim,
-        num_heads,
-        ffn_dim_multiplier=4,
-        dropout=0.0
-        ):
+        self, embedding_dim, num_heads, ffn_dim_multiplier=4, dropout=0.0):
 
         super().__init__()
         if embedding_dim % num_heads != 0:
